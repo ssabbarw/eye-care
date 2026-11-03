@@ -27,7 +27,11 @@ final class ReminderStore: ObservableObject {
         let decoder = JSONDecoder()
         if let data = defaults.data(forKey: remindersKey),
            let saved = try? decoder.decode([Reminder].self, from: data) {
-            reminders = saved
+            reminders = saved.map { r in
+                var r = r
+                if r.name == "Eye break (20-20-20)" { r.name = "20-20-20" }
+                return r
+            }
         } else {
             reminders = Reminder.defaults
         }

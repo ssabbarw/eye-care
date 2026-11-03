@@ -10,12 +10,17 @@ final class AlertPresenter {
     private var breakWindows: [NSWindow] = []
     private var breakSession: BreakSession?
     private var keyMonitor: Any?
+    private var preBreak: (panel: BannerPanel, countdown: PreBreakCountdown)?
 
-    var isBreakActive: Bool { breakSession != nil }
+    var isBreakActive: Bool { breakSession != nil || preBreak != nil }
+
+    private func shouldChime(_ r: Reminder) -> Bool {
+        r.playChime && !ReminderStore.shared.general.silent
+    }
 
     func present(_ r: Reminder) {
         let tip = r.category.randomExercise()
-        if r.playChime { Chime.play(r.soundName) }
+        if shouldChime(r) { Chime.play(r.soundName) }
 
         switch r.alertStyle {
         case .banner:
@@ -27,7 +32,11 @@ final class AlertPresenter {
                 showBanner(r, tip: tip)
             }
         case .fullScreen:
-            showBreak(r, tip: tip)
+            if r.warningSeconds > 0 {
+                showPreBreak(r, tip: tip)
+            } else {
+                showBreak(r, tip: tip)
+            }
         }
     }
 
@@ -102,9 +111,59 @@ final class AlertPresenter {
         return NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main ?? NSScreen.screens.first
     }
 
+    // MARK: - Pre-break countdown
+
+    /// A small top-left countdown that warns before a full screen break starts.
+    private func showPreBreak(_ r: Reminder, tip: Exercise?) {
+        cancelPreBreak()
+        let countdown = PreBreakCountdown(reminder: r, seconds: r.warningSeconds)
+        countdown.onFinish = { [weak self] outcome in self?.finishPreBreak(outcome, tip: tip) }
+
+        let panel = BannerPanel()
+        let host = NSHostingView(rootView: PreBreakView(countdown: countdown))
+        let size = host.fittingSize
+        host.frame = NSRect(origin: .zero, size: size)
+        panel.contentView = host
+        if let vf = Self.activeScreen()?.visibleFrame {
+            let margin: CGFloat = 12
+            panel.setFrame(NSRect(x: vf.minX + margin, y: vf.maxY - margin - size.height,
+                                  width: size.width, height: size.height), display: true)
+        }
+        panel.alphaValue = 0
+        panel.orderFrontRegardless()
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.25
+            panel.animator().alphaValue = 1
+        }
+        preBreak = (panel, countdown)
+        countdown.start()
+    }
+
+    private func finishPreBreak(_ outcome: PreBreakCountdown.Outcome, tip: Exercise?) {
+        guard let r = preBreak?.countdown.reminder else { return }
+        cancelPreBreak()
+        switch outcome {
+        case .start: showBreak(r, tip: tip)
+        case .skipped: ReminderStore.shared.breakFinished(r.id)
+        }
+    }
+
+    private func cancelPreBreak() {
+        guard let (panel, countdown) = preBreak else { return }
+        preBreak = nil
+        countdown.stop()
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.2
+            panel.animator().alphaValue = 0
+        }, completionHandler: {
+            MainActor.assumeIsolated { panel.orderOut(nil) }
+        })
+    }
+
     // MARK: - Full screen break
 
     private func showBreak(_ r: Reminder, tip: Exercise?) {
+        cancelPreBreak()
         if breakSession != nil { endBreak() }
 
         let session = BreakSession(reminder: r, tip: tip)
@@ -149,7 +208,7 @@ final class AlertPresenter {
         endBreak()
         switch outcome {
         case .completed:
-            if r.playChime { Chime.play(r.soundName) }
+            if shouldChime(r) { Chime.play(r.soundName) }
             ReminderStore.shared.breakFinished(r.id)
         case .skipped:
             ReminderStore.shared.breakFinished(r.id)

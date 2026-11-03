@@ -53,6 +53,91 @@ struct BannerView: View {
     }
 }
 
+// MARK: - Pre-break countdown
+
+@MainActor
+final class PreBreakCountdown: ObservableObject {
+    enum Outcome { case start, skipped }
+
+    let reminder: Reminder
+    let total: Int
+    @Published var remaining: Int
+    var onFinish: ((Outcome) -> Void)?
+    private var timer: Timer?
+
+    init(reminder: Reminder, seconds: Int) {
+        self.reminder = reminder
+        total = max(1, seconds)
+        remaining = total
+    }
+
+    func start() {
+        let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.remaining -= 1
+                if self.remaining <= 0 { self.finish(.start) }
+            }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
+    }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    func finish(_ outcome: Outcome) {
+        stop()
+        let handler = onFinish
+        onFinish = nil
+        handler?(outcome)
+    }
+}
+
+struct PreBreakView: View {
+    @ObservedObject var countdown: PreBreakCountdown
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle().stroke(.secondary.opacity(0.25), lineWidth: 4)
+                Circle()
+                    .trim(from: 0, to: Double(countdown.remaining) / Double(countdown.total))
+                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 1), value: countdown.remaining)
+                Text("\(countdown.remaining)")
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+            }
+            .frame(width: 44, height: 44)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(countdown.reminder.name).font(.headline).lineLimit(1)
+                Text("Break starts in \(countdown.remaining)s")
+                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            }
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 6) {
+                if countdown.reminder.allowSkip {
+                    Button("Skip") { countdown.finish(.skipped) }
+                }
+                Button("Start Now") { countdown.finish(.start) }
+            }
+            .controlSize(.small)
+        }
+        .padding(12)
+        .frame(width: 360)
+        .background(VisualEffect(material: .popover, blending: .behindWindow))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.12)))
+    }
+}
+
 // MARK: - Full screen break
 
 @MainActor

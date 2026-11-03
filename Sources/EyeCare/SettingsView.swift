@@ -153,11 +153,19 @@ struct ReminderEditor: View {
                     Stepper(value: $reminder.breakSeconds, in: 10...1800, step: 10) {
                         Text("Break length: \(Self.formatSeconds(reminder.breakSeconds))")
                     }
+                    Stepper(value: $reminder.warningSeconds, in: 0...120, step: 5) {
+                        Text(reminder.warningSeconds == 0
+                             ? "Start the break right away"
+                             : "Count down \(reminder.warningSeconds) seconds first (top-left corner)")
+                    }
                     Toggle("Allow skipping or snoozing the break", isOn: $reminder.allowSkip)
                 }
 
                 Toggle("Play a chime", isOn: $reminder.playChime)
-                if reminder.playChime {
+                if store.general.silent {
+                    Text("Silent mode is on in General, so no chimes play.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else if reminder.playChime {
                     HStack {
                         Picker("Sound", selection: $reminder.soundName) {
                             ForEach(Sounds.names, id: \.self) { Text($0).tag($0) }
@@ -367,6 +375,7 @@ struct GeneralSettingsView: View {
             }
 
             Section("Behaviour") {
+                Toggle("Silent mode (no chimes for any reminder or break)", isOn: $store.general.silent)
                 Toggle("Show countdown in the menu bar", isOn: $store.general.showCountdown)
                 Stepper("Snooze for \(store.general.snoozeMinutes) minutes",
                         value: $store.general.snoozeMinutes, in: 1...60)

@@ -88,6 +88,8 @@ struct Reminder: Codable, Identifiable, Equatable {
     var breakSeconds = 60
     /// Whether a full screen break can be skipped or snoozed.
     var allowSkip = true
+    /// Countdown shown in the top-left corner before a full screen break; 0 starts it right away.
+    var warningSeconds = 20
     var category: ExerciseCategory = .stretch
 
     /// Changes to these fields reset the reminder's countdown.
@@ -138,7 +140,7 @@ struct Reminder: Codable, Identifiable, Equatable {
 
     static var defaults: [Reminder] {
         [
-            Reminder(name: "Eye break (20-20-20)",
+            Reminder(name: "20-20-20",
                      message: "Look at something 20 feet away for 20 seconds.",
                      intervalMinutes: 20, alertStyle: .banner, soundName: "Glass",
                      bannerSeconds: 20, category: .eyes),
@@ -165,7 +167,33 @@ struct Reminder: Codable, Identifiable, Equatable {
     }
 }
 
+// Decode field by field so settings saved by older versions keep working when fields are added.
+extension Reminder {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = Reminder(name: "", message: "")
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? d.id
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? d.name
+        message = try c.decodeIfPresent(String.self, forKey: .message) ?? d.message
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? d.enabled
+        scheduleKind = try c.decodeIfPresent(ScheduleKind.self, forKey: .scheduleKind) ?? d.scheduleKind
+        intervalMinutes = try c.decodeIfPresent(Int.self, forKey: .intervalMinutes) ?? d.intervalMinutes
+        times = try c.decodeIfPresent([TimeOfDay].self, forKey: .times) ?? d.times
+        weekdays = try c.decodeIfPresent(Set<Int>.self, forKey: .weekdays) ?? d.weekdays
+        alertStyle = try c.decodeIfPresent(AlertStyle.self, forKey: .alertStyle) ?? d.alertStyle
+        playChime = try c.decodeIfPresent(Bool.self, forKey: .playChime) ?? d.playChime
+        soundName = try c.decodeIfPresent(String.self, forKey: .soundName) ?? d.soundName
+        bannerSeconds = try c.decodeIfPresent(Int.self, forKey: .bannerSeconds) ?? d.bannerSeconds
+        breakSeconds = try c.decodeIfPresent(Int.self, forKey: .breakSeconds) ?? d.breakSeconds
+        allowSkip = try c.decodeIfPresent(Bool.self, forKey: .allowSkip) ?? d.allowSkip
+        warningSeconds = try c.decodeIfPresent(Int.self, forKey: .warningSeconds) ?? d.warningSeconds
+        category = try c.decodeIfPresent(ExerciseCategory.self, forKey: .category) ?? d.category
+    }
+}
+
 struct GeneralSettings: Codable, Equatable {
+    /// Mutes every chime, for all reminders and breaks.
+    var silent = false
     var activeHoursEnabled = false
     var activeStart = TimeOfDay(hour: 9, minute: 0)
     var activeEnd = TimeOfDay(hour: 18, minute: 0)
@@ -180,6 +208,20 @@ struct GeneralSettings: Codable, Equatable {
         let m = (c.hour ?? 0) * 60 + (c.minute ?? 0)
         let s = activeStart.minutesSinceMidnight, e = activeEnd.minutesSinceMidnight
         return s <= e ? (m >= s && m < e) : (m >= s || m < e)
+    }
+}
+
+extension GeneralSettings {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = GeneralSettings()
+        silent = try c.decodeIfPresent(Bool.self, forKey: .silent) ?? d.silent
+        activeHoursEnabled = try c.decodeIfPresent(Bool.self, forKey: .activeHoursEnabled) ?? d.activeHoursEnabled
+        activeStart = try c.decodeIfPresent(TimeOfDay.self, forKey: .activeStart) ?? d.activeStart
+        activeEnd = try c.decodeIfPresent(TimeOfDay.self, forKey: .activeEnd) ?? d.activeEnd
+        showCountdown = try c.decodeIfPresent(Bool.self, forKey: .showCountdown) ?? d.showCountdown
+        snoozeMinutes = try c.decodeIfPresent(Int.self, forKey: .snoozeMinutes) ?? d.snoozeMinutes
+        resetOnWake = try c.decodeIfPresent(Bool.self, forKey: .resetOnWake) ?? d.resetOnWake
     }
 }
 

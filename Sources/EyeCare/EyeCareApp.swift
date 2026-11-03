@@ -93,6 +93,7 @@ struct MenuContent: View {
             }
         }
         Button("Restart All Timers") { store.restartAll() }
+        Toggle("Silent (No Chimes)", isOn: $store.general.silent)
 
         Divider()
 
