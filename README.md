@@ -12,6 +12,7 @@ A lightweight macOS menu bar app that reminds you to take breaks, rest your eyes
   - Native macOS notification with Done / Snooze actions.
   - Full-screen break on every display with a countdown and a suggested exercise. A 20-second countdown in the top-left corner comes first, with Skip and Start Now. Skipping can be turned off.
 - **Silent mode**: turn off every chime from the menu bar or General settings.
+- **Meetings**: reminders are held while any app uses the microphone or camera (Zoom, Google Meet, Teams, FaceTime…) and shown, or skipped, when the call ends. Reminder windows are hidden from screen sharing.
 - **Menu bar**: countdown to the next reminder, Take a Break Now, Pause (15 min to indefinitely), Restart All Timers.
 - **General**: launch at login, active hours, snooze length, restart timers after the Mac wakes from sleep.
 - Built-in suggestions for eye rest, stretching, exercise, posture and hydration.

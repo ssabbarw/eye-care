@@ -175,6 +175,7 @@ final class AlertPresenter {
             let window = BreakWindow(contentRect: screen.frame, styleMask: [.borderless],
                                      backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
+            window.sharingType = .none
             window.level = .screenSaver
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
             window.backgroundColor = .clear
@@ -248,6 +249,7 @@ final class BannerPanel: NSPanel {
         hidesOnDeactivate = false
         becomesKeyOnlyIfNeeded = true
         isReleasedWhenClosed = false
+        sharingType = .none // keep out of screen sharing and recordings
     }
 }
 

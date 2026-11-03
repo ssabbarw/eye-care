@@ -67,6 +67,8 @@ struct MenuContent: View {
                  ? "Paused"
                  : "Paused until \(paused.formatted(date: .omitted, time: .shortened))")
             Button("Resume") { store.resume() }
+        } else if store.inCall {
+            Text("On a call — reminders held until it ends")
         } else if store.upcoming.isEmpty {
             Text("No active reminders")
         } else {

@@ -374,6 +374,25 @@ struct GeneralSettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
+            Section {
+                Toggle("Hold reminders while I'm on a call", isOn: $store.general.holdDuringCalls)
+                if store.general.holdDuringCalls {
+                    Picker("When the call ends", selection: $store.general.skipHeldReminders) {
+                        Text("Show held reminders").tag(false)
+                        Text("Skip them").tag(true)
+                    }
+                    if store.inCall {
+                        Label("On a call right now — reminders are held", systemImage: "phone.fill")
+                            .font(.callout).foregroundStyle(.orange)
+                    }
+                }
+            } header: {
+                Text("Meetings")
+            } footer: {
+                Text("A call is detected when any app is using the microphone or camera (Zoom, Google Meet, Teams, FaceTime…). Reminders are also hidden from screen sharing and recordings.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Behaviour") {
                 Toggle("Silent mode (no chimes for any reminder or break)", isOn: $store.general.silent)
                 Toggle("Show countdown in the menu bar", isOn: $store.general.showCountdown)

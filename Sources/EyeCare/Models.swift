@@ -141,9 +141,9 @@ struct Reminder: Codable, Identifiable, Equatable {
     static var defaults: [Reminder] {
         [
             Reminder(name: "20-20-20",
-                     message: "Look at something 20 feet away for 20 seconds.",
+                     message: "",
                      intervalMinutes: 20, alertStyle: .banner, soundName: "Glass",
-                     bannerSeconds: 20, category: .eyes),
+                     bannerSeconds: 20, category: .custom),
             Reminder(name: "Stretch break",
                      message: "Stand up, stretch and move around for a bit.",
                      intervalMinutes: 60, alertStyle: .fullScreen, soundName: "Hero",
@@ -194,6 +194,10 @@ extension Reminder {
 struct GeneralSettings: Codable, Equatable {
     /// Mutes every chime, for all reminders and breaks.
     var silent = false
+    /// Hold reminders while the microphone or camera is in use (Zoom, Meet, Teams, FaceTime...).
+    var holdDuringCalls = true
+    /// When holding for a call, drop the reminder instead of showing it once the call ends.
+    var skipHeldReminders = false
     var activeHoursEnabled = false
     var activeStart = TimeOfDay(hour: 9, minute: 0)
     var activeEnd = TimeOfDay(hour: 18, minute: 0)
@@ -216,6 +220,8 @@ extension GeneralSettings {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = GeneralSettings()
         silent = try c.decodeIfPresent(Bool.self, forKey: .silent) ?? d.silent
+        holdDuringCalls = try c.decodeIfPresent(Bool.self, forKey: .holdDuringCalls) ?? d.holdDuringCalls
+        skipHeldReminders = try c.decodeIfPresent(Bool.self, forKey: .skipHeldReminders) ?? d.skipHeldReminders
         activeHoursEnabled = try c.decodeIfPresent(Bool.self, forKey: .activeHoursEnabled) ?? d.activeHoursEnabled
         activeStart = try c.decodeIfPresent(TimeOfDay.self, forKey: .activeStart) ?? d.activeStart
         activeEnd = try c.decodeIfPresent(TimeOfDay.self, forKey: .activeEnd) ?? d.activeEnd

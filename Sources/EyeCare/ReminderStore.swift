@@ -16,6 +16,9 @@ final class ReminderStore: ObservableObject {
     /// `Date.distantFuture` means paused until manually resumed.
     @Published private(set) var pausedUntil: Date?
     @Published private(set) var menuBarTitle = ""
+    /// True while the mic or camera is in use and reminders are being held.
+    @Published private(set) var inCall = false
+    private var lastCallCheck = Date.distantPast
 
     private var signatures: [UUID: String] = [:]
     private var timer: Timer?
@@ -30,6 +33,10 @@ final class ReminderStore: ObservableObject {
             reminders = saved.map { r in
                 var r = r
                 if r.name == "Eye break (20-20-20)" { r.name = "20-20-20" }
+                if r.name == "20-20-20" && r.message.hasPrefix("Look at something 20 feet") {
+                    r.message = ""
+                    r.category = .custom
+                }
                 return r
             }
         } else {
@@ -85,6 +92,8 @@ final class ReminderStore: ObservableObject {
             resume()
         }
 
+        refreshCallState(now)
+
         let presenter = AlertPresenter.shared
         for r in reminders where r.enabled {
             guard let due = nextFire[r.id], due <= now else { continue }
@@ -95,11 +104,27 @@ final class ReminderStore: ObservableObject {
             }
             // A fixed-time reminder missed by a long time (e.g. Mac was asleep) is skipped.
             let missed = r.scheduleKind == .fixedTimes && now.timeIntervalSince(due) > 10 * 60
+            if inCall {
+                // Re-check shortly so a held reminder shows soon after the call ends.
+                nextFire[r.id] = general.skipHeldReminders ? r.nextFire(after: now) : now.addingTimeInterval(15)
+                continue
+            }
             nextFire[r.id] = r.nextFire(after: now)
             if missed || !general.isWithinActiveHours(now) { continue }
             presenter.present(r)
         }
         updateMenuBarTitle()
+    }
+
+    private func refreshCallState(_ now: Date) {
+        guard general.holdDuringCalls else {
+            if inCall { inCall = false }
+            return
+        }
+        guard now.timeIntervalSince(lastCallCheck) >= 5 else { return }
+        lastCallCheck = now
+        let active = CallDetector.isInCall()
+        if active != inCall { inCall = active }
     }
 
     /// Recomputes countdowns for reminders that are new or whose schedule changed.
