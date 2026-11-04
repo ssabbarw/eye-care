@@ -39,6 +39,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Opening the app again (Finder, Spotlight, `open`) shows the settings window.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        SettingsWindowController.shared.show()
+        return false
+    }
+
     /// Menu bar apps have no visible main menu, so make sure ⌘C / ⌘V / ⌘A work in text fields.
     private func installEditMenuIfNeeded() {
         let main = NSApp.mainMenu ?? NSMenu()
